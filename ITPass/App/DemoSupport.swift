@@ -30,7 +30,7 @@ enum Demo {
     @MainActor
     static func launch(_ store: AppStore) -> Launch? {
         switch value("-demoOpen") {
-        case "quiz":
+        case "quiz", "quizAnswered":
             return .quiz(QuizConfig(title: "今日のトレーニング", questions: store.dailyPlan().questions))
         case "cards":
             return .cards(title: "おまかせ", deck: store.cardDeck(categories: nil, count: 20))

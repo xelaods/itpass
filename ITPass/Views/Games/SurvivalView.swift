@@ -90,7 +90,7 @@ struct SurvivalView: View {
                         .modifier(Shake(animatableData: shake))
 
                         if let selected, selected != item.answer {
-                            ExplanationCard(question: item.question, correctText: item.choices[item.answer], isCorrect: false)
+                            ExplanationCard(item: item, chosen: selected)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }

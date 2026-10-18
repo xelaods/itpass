@@ -102,6 +102,7 @@ struct QuizSessionView: View {
 
     private func questionView(_ item: PresentedQuestion) -> some View {
         VStack(spacing: 0) {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 8) {
@@ -142,8 +143,8 @@ struct QuizSessionView: View {
                     }
 
                     if let selected {
-                        ExplanationCard(question: item.question, correctText: item.choices[item.answer],
-                                        isCorrect: selected == item.answer)
+                        ExplanationCard(item: item, chosen: selected)
+                            .id("explanation")
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
@@ -151,6 +152,19 @@ struct QuizSessionView: View {
                 .padding(.bottom, 20)
             }
             .overlay(alignment: .top) { comboOverlay }
+            .onAppear {
+                #if DEBUG
+                if Demo.value("-demoOpen") == "quizAnswered" && selected == nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        answer((item.answer + 1) % item.choices.count, item: item)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                            withAnimation { proxy.scrollTo("explanation", anchor: .top) }
+                        }
+                    }
+                }
+                #endif
+            }
+            }
 
             if selected != nil {
                 PrimaryButton(title: index + 1 < items.count ? "次の問題へ" : "結果を見る",
@@ -333,27 +347,40 @@ struct ChoiceButton: View {
     }
 }
 
-/// 解説カード
+/// 解説カード（正解の解説と、選択肢ごとの解説）
 struct ExplanationCard: View {
     let question: Question
-    let correctText: String
-    let isCorrect: Bool
+    let choices: [String]
+    let notes: [String]
+    let answer: Int
+    /// 選んだ選択肢。nil は見直しで眺めているだけ、-1 は「わからない」
+    let chosen: Int?
+
+    init(item: PresentedQuestion, chosen: Int) {
+        self.question = item.question
+        self.choices = item.choices
+        self.notes = item.notes
+        self.answer = item.answer
+        self.chosen = chosen
+    }
+
+    init(question: Question, chosen: Int?) {
+        self.question = question
+        self.choices = question.choices
+        self.notes = question.choices.indices.map { question.note(at: $0) }
+        self.answer = question.answer
+        self.chosen = chosen
+    }
+
+    private var isCorrect: Bool { chosen == answer }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(isCorrect ? Theme.correct : Theme.wrong)
-                Text(isCorrect ? "正解！" : "不正解")
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(isCorrect ? Theme.correct : Theme.wrong)
-                Spacer()
-            }
-            if !isCorrect {
+            header
+            if chosen != nil && !isCorrect {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("正解").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Text(correctText).font(.body.weight(.semibold))
+                    Text("\(ChoiceLabel.of(answer))　\(choices[answer])").font(.body.weight(.semibold))
                 }
             }
             Divider()
@@ -365,7 +392,81 @@ struct ExplanationCard: View {
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if notes.contains(where: { !$0.isEmpty }) {
+                Divider()
+                Text("選択肢の解説")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(choices.indices, id: \.self) { i in
+                        choiceNote(i)
+                    }
+                }
+            }
         }
         .card()
+    }
+
+    @ViewBuilder
+    private var header: some View {
+        if let chosen {
+            HStack(spacing: 8) {
+                Image(systemName: chosen == answer ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(chosen == answer ? Theme.correct : Theme.wrong)
+                Text(chosen == answer ? "正解！" : (chosen < 0 ? "答えられなかった" : "不正解"))
+                    .font(.title3.weight(.heavy))
+                    .foregroundStyle(chosen == answer ? Theme.correct : Theme.wrong)
+                Spacer()
+            }
+        } else {
+            Label("解説", systemImage: "text.book.closed.fill")
+                .font(.headline)
+                .foregroundStyle(Theme.accent)
+        }
+    }
+
+    private func choiceNote(_ i: Int) -> some View {
+        let isAnswer = i == answer
+        let isPicked = chosen == i
+        let mark: Color = isAnswer ? Theme.correct : (isPicked ? Theme.wrong : Color(.tertiaryLabel))
+        return HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle().fill(isAnswer || isPicked ? mark : Color(.tertiarySystemFill))
+                if isAnswer {
+                    Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
+                } else if isPicked {
+                    Image(systemName: "xmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
+                } else {
+                    Text(ChoiceLabel.of(i)).font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 22, height: 22)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(choices[i])
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if isPicked && !isAnswer {
+                        Text("あなたの回答")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(Theme.wrong)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.wrong.opacity(0.12), in: Capsule())
+                    }
+                }
+                Text(isAnswer ? "正解。上の解説を参照。" : notes[i])
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isPicked && !isAnswer ? Theme.wrong.opacity(0.06) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }

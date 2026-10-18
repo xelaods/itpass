@@ -144,8 +144,7 @@ struct QuestionDetailSheet: View {
                                 .allowsHitTesting(false)
                         }
                     }
-                    ExplanationCard(question: question, correctText: question.correctText,
-                                    isCorrect: chosen == nil || chosen == question.answer)
+                    ExplanationCard(question: question, chosen: chosen)
                     if let s = store.stat(question) {
                         HStack {
                             Label("\(s.attempts)回挑戦", systemImage: "arrow.triangle.2.circlepath")

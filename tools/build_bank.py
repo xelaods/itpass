@@ -44,6 +44,44 @@ def numeric_key(s):
     return None
 
 
+def norm_term(s):
+    return re.sub(r"[（(].*?[)）]", "", s).strip()
+
+
+def load_notes():
+    """tools/data/notes_*.txt を読む。{問題ID: {選択肢: 解説}}"""
+    notes = {}
+    for path in sorted((ROOT / "data").glob("notes_*.txt")):
+        qid = None
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            line = line.rstrip()
+            if not line or line.startswith("# "):
+                continue
+            if line.startswith("## "):
+                qid = line[3:].strip()
+                notes.setdefault(qid, {})
+                continue
+            if " :: " not in line or qid is None:
+                raise SystemExit(f"{path.name}:{n} 形式が不正です: {line}")
+            choice, note = line.split(" :: ", 1)
+            notes[qid][choice.strip()] = note.strip()
+    return notes
+
+
+def glossary_notes():
+    table = {}
+    for t in terms.TERMS:
+        prefix = ""
+        if t.reading and t.reading not in t.term:
+            prefix = t.reading + "。"
+        note = prefix + t.definition
+        for key in {t.term, norm_term(t.term)}:
+            table.setdefault(key, note)
+        if t.reading and re.fullmatch(r"[A-Za-z0-9/\- ]+", t.reading):
+            table.setdefault(t.reading, note)
+    return table
+
+
 def order_choices(qid, choices, fixed):
     correct = choices[0]
     if fixed:
@@ -61,6 +99,9 @@ def main():
     errors = []
     questions = []
     seen = set()
+    manual = load_notes()
+    glossary = glossary_notes()
+    used_notes = set()
     for module in (strategy, management, technology):
         for q in module.QUESTIONS:
             if q.category not in FIELD_OF:
@@ -74,6 +115,17 @@ def main():
                 errors.append(f"問題の重複: {q.text[:30]}")
             seen.add(qid)
             choices, answer = order_choices(qid, q.choices, q.fixed)
+            note_map = {}
+            for c in q.choices[1:]:
+                note = manual.get(qid, {}).get(c)
+                if note:
+                    used_notes.add((qid, c))
+                else:
+                    note = glossary.get(c) or glossary.get(norm_term(c))
+                if not note:
+                    errors.append(f"誤答の解説がありません: {qid} {c}")
+                note_map[c] = note or ""
+            notes = ["" if i == answer else note_map.get(c, "") for i, c in enumerate(choices)]
             questions.append({
                 "id": qid,
                 "field": FIELD_OF.get(q.category, "strategy"),
@@ -83,8 +135,14 @@ def main():
                 "choices": choices,
                 "answer": answer,
                 "explanation": q.explanation,
+                "notes": notes,
                 "fixed": q.fixed,
             })
+
+    for qid, m in manual.items():
+        for c in m:
+            if (qid, c) not in used_notes:
+                errors.append(f"使われていない解説（選択肢の表記違い？）: {qid} {c}")
 
     term_list = []
     seen_terms = set()

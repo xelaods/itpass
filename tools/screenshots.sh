@@ -35,6 +35,7 @@ shot 05-records 5 -demo -demoTab records
 shot 05b-records-bottom 6 -demo -demoTab records -demoScroll bottom
 shot 03b-learn-bottom 6 -demo -demoTab learn -demoScroll bottom
 shot 06-quiz 6 -demo -demoOpen quiz
+shot 06b-quiz-answered 7 -demo -demoOpen quizAnswered
 shot 07-cards 6 -demo -demoOpen cards
 shot 08-exam-session 6 -demo -demoOpen exam
 shot 09-time-attack 9 -demo -demoOpen timeAttack

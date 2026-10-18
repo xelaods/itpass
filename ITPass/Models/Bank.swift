@@ -72,9 +72,16 @@ struct Question: Codable, Identifiable, Hashable {
     let choices: [String]
     let answer: Int
     let explanation: String
+    /// 選択肢ごとの解説（正解の位置は空文字）
+    let notes: [String]?
     let fixed: Bool
 
     var correctText: String { choices[answer] }
+
+    func note(at index: Int) -> String {
+        guard let notes, notes.indices.contains(index) else { return "" }
+        return notes[index]
+    }
 }
 
 struct Term: Codable, Identifiable, Hashable {
@@ -153,19 +160,21 @@ struct PresentedQuestion: Identifiable, Hashable {
     let id: String
     let question: Question
     let choices: [String]
+    let notes: [String]
     let answer: Int
 
     init(_ question: Question, shuffle: Bool = true) {
         self.id = question.id + "-" + UUID().uuidString
         self.question = question
+        let order: [Int]
         if shuffle && !question.fixed {
-            let order = Array(question.choices.indices).shuffled()
-            self.choices = order.map { question.choices[$0] }
-            self.answer = order.firstIndex(of: question.answer) ?? 0
+            order = Array(question.choices.indices).shuffled()
         } else {
-            self.choices = question.choices
-            self.answer = question.answer
+            order = Array(question.choices.indices)
         }
+        self.choices = order.map { question.choices[$0] }
+        self.notes = order.map { question.note(at: $0) }
+        self.answer = order.firstIndex(of: question.answer) ?? 0
     }
 }
 
