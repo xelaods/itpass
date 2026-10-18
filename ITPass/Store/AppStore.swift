@@ -53,6 +53,10 @@ final class AppStore: ObservableObject {
         }
     }
 
+    #if DEBUG
+    func replaceData(_ newData: SaveData) { data = newData }
+    #endif
+
     func resetAll() {
         let settings = data.settings
         var fresh = SaveData()

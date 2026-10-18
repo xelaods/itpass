@@ -25,6 +25,7 @@ enum AppTab: Hashable {
 struct RootView: View {
     @EnvironmentObject private var store: AppStore
     @State private var tab: AppTab = .home
+    @State private var demoLaunch: Launch?
 
     var body: some View {
         TabView(selection: $tab) {
@@ -42,6 +43,16 @@ struct RootView: View {
                 .tag(AppTab.records)
         }
         .achievementBanner()
+        .launcher($demoLaunch)
+        .onAppear {
+            #if DEBUG
+            if Demo.enabled {
+                store.seedDemo()
+                tab = Demo.tab
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { demoLaunch = Demo.launch(store) }
+            }
+            #endif
+        }
         .fullScreenCover(isPresented: Binding(
             get: { !store.onboarded },
             set: { _ in }

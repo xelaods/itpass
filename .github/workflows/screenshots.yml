@@ -1,0 +1,59 @@
+name: Screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["ITPass/**", "tools/**", ".github/workflows/screenshots.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 問題データを生成
+        run: python3 tools/build_bank.py
+
+      - name: XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: シミュレータ用にビルド
+        run: |
+          xcodebuild \
+            -project ITPass.xcodeproj \
+            -scheme ITPass \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build > build.log 2>&1 && status=0 || status=$?
+          grep -E "error:|BUILD (SUCCEEDED|FAILED)" build.log | head -100 || true
+          grep -E "warning:" build.log | grep -v "appintents" | sort -u | head -60 > warnings.txt || true
+          exit $status
+
+      - name: スクリーンショット
+        run: tools/screenshots.sh
+
+      - name: screenshots ブランチに保存
+        run: |
+          cp warnings.txt shots/ || true
+          cd shots
+          git init -q
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout -q -b screenshots
+          git add -A
+          git commit -q -m "screenshots ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screenshots
