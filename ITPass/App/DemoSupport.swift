@@ -24,6 +24,9 @@ enum Demo {
         }
     }
 
+    /// 画面の下までスクロールした状態で撮る
+    static var scrollToBottom: Bool { value("-demoScroll") == "bottom" }
+
     @MainActor
     static func launch(_ store: AppStore) -> Launch? {
         switch value("-demoOpen") {
@@ -33,6 +36,15 @@ enum Demo {
             return .cards(title: "おまかせ", deck: store.cardDeck(categories: nil, count: 20))
         case "exam":
             return .exam(store.makeExam(.full))
+        case "examDone":
+            var d = store.makeExam(.half)
+            for (i, id) in d.questionIDs.enumerated() {
+                guard let q = store.bank.question(id) else { continue }
+                d.answers[i] = Double.random(in: 0...1) < 0.74 ? q.answer : (q.answer + 1) % 4
+            }
+            d.remaining = 2
+            store.saveDraft(d)
+            return .exam(d)
         case "timeAttack": return .timeAttack
         case "survival": return .survival
         case "trueFalse": return .trueFalse

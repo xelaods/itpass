@@ -10,6 +10,7 @@ struct RecordsView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     levelCard
@@ -43,9 +44,18 @@ struct RecordsView: View {
                     SectionHeader(title: "バッジ", trailing: "\(Achievement.all.filter { store.isUnlocked($0) }.count) / \(Achievement.all.count)")
                     AchievementGrid()
                         .card()
+                        .id("bottom")
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+            }
+            .onAppear {
+                #if DEBUG
+                if Demo.scrollToBottom {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { proxy.scrollTo("bottom", anchor: .bottom) }
+                }
+                #endif
+            }
             }
             .background(Theme.background)
             .navigationTitle("記録")

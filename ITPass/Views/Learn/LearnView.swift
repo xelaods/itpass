@@ -10,6 +10,7 @@ struct LearnView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     SectionHeader(title: "練習する")
@@ -63,9 +64,18 @@ struct LearnView: View {
                             launch = .quiz(QuizConfig(title: category.name, symbol: category.symbol, questions: qs))
                         }
                     }
+                    Color.clear.frame(height: 1).id("bottom")
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+            }
+            .onAppear {
+                #if DEBUG
+                if Demo.scrollToBottom {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { proxy.scrollTo("bottom", anchor: .bottom) }
+                }
+                #endif
+            }
             }
             .background(Theme.background)
             .navigationTitle("学ぶ")

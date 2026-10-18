@@ -279,23 +279,25 @@ final class AppStore: ObservableObject {
         bank.questions(inCategory: id).filter { data.questionStats[$0.id] != nil }.count
     }
 
-    /// 合格予測（分野ごとの正答率から1000点換算。未学習の問題は正答率25%として扱う）
+    /// 合格予測（分野ごとの正答率から1000点換算）
+    /// 解いた問題は最近の結果を重視して評価し、まだ解いていない問題は「自分の正答率の7割（最低3割）」とみなす
     var prediction: (total: Int, fields: [Field: Int], confidence: Double) {
         var fields: [Field: Int] = [:]
         var weighted = 0.0
         for f in Field.allCases {
             let qs = bank.questions(in: f)
-            var est = 0.0
+            var seenSum = 0.0
+            var seen = 0
             for q in qs {
-                if let s = data.questionStats[q.id] {
-                    // 最近の結果を重視
-                    let recent = s.lastCorrect ? 1.0 : 0.0
-                    est += 0.5 * s.accuracy + 0.3 * recent + 0.2 * s.mastery
-                } else {
-                    est += 0.25
-                }
+                guard let s = data.questionStats[q.id] else { continue }
+                let recent = s.lastCorrect ? 1.0 : 0.0
+                seenSum += 0.5 * s.accuracy + 0.3 * recent + 0.2 * s.mastery
+                seen += 1
             }
-            let rate = qs.isEmpty ? 0 : est / Double(qs.count)
+            let seenRate = seen == 0 ? 0.3 : seenSum / Double(seen)
+            let unseenRate = max(0.3, seenRate * 0.7)
+            let unseen = qs.count - seen
+            let rate = qs.isEmpty ? 0 : (seenSum + unseenRate * Double(unseen)) / Double(qs.count)
             fields[f] = Int((rate * 1000).rounded())
             weighted += rate * Double(f.examCount)
         }

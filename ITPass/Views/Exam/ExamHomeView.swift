@@ -101,16 +101,9 @@ struct ExamHomeView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(kind.title).font(.title3.weight(.bold)).foregroundStyle(.primary)
                     Text(kind.detail).font(.subheadline).foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        ForEach(Field.allCases) { f in
-                            Text("\(f.shortName.prefix(1))\(kind.counts[f] ?? 0)")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(f.color)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(f.color.opacity(0.12), in: Capsule())
-                        }
-                    }
+                    FieldMixBar(counts: kind.counts)
+                        .frame(width: 120)
+                        .padding(.top, 2)
                 }
                 Spacer()
                 if let best = store.exams.filter({ $0.kind == kind }).map(\.score).max() {
@@ -212,4 +205,24 @@ private struct ScorePoint: Identifiable {
     let score: Int
     let passed: Bool
     var id: Int { index }
+}
+
+/// 分野ごとの出題数の比率
+struct FieldMixBar: View {
+    let counts: [Field: Int]
+
+    var body: some View {
+        let total = max(counts.values.reduce(0, +), 1)
+        GeometryReader { geo in
+            HStack(spacing: 2) {
+                ForEach(Field.allCases) { f in
+                    Capsule()
+                        .fill(f.color)
+                        .frame(width: max(geo.size.width * CGFloat(counts[f] ?? 0) / CGFloat(total) - 2, 2))
+                }
+            }
+        }
+        .frame(height: 5)
+        .accessibilityLabel(Field.allCases.map { "\($0.shortName)\(counts[$0] ?? 0)問" }.joined(separator: "、"))
+    }
 }

@@ -68,7 +68,7 @@ struct MatchGameView: View {
                             tile(text: t.term, isTerm: true, id: t.id)
                         }
                     }
-                    .frame(width: 118)
+                    .frame(width: 138)
                     VStack(spacing: 10) {
                         ForEach(definitions) { t in
                             tile(text: t.definition, isTerm: false, id: t.id)
@@ -95,8 +95,8 @@ struct MatchGameView: View {
                 .font(isTerm ? .subheadline.weight(.bold) : .caption)
                 .foregroundStyle(done ? .secondary : .primary)
                 .multilineTextAlignment(isTerm ? .center : .leading)
-                .lineLimit(isTerm ? 3 : 5)
-                .minimumScaleFactor(0.75)
+                .lineLimit(isTerm ? 2 : 5)
+                .minimumScaleFactor(isTerm ? 0.55 : 0.75)
                 .frame(maxWidth: .infinity, minHeight: 78, alignment: isTerm ? .center : .leading)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)

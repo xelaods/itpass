@@ -199,12 +199,15 @@ struct FlashcardView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: 440)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Theme.card)
+                .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .strokeBorder(term.field.color.opacity(0.35), lineWidth: 1.5)
         )
-        .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
     }
 
     private func swipe(known isKnown: Bool) {

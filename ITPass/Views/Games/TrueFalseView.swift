@@ -122,12 +122,15 @@ struct TrueFalseView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, minHeight: 300)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Theme.card)
+                .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .strokeBorder(borderColor, lineWidth: 3)
         )
-        .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
     }
 
     private var borderColor: Color {
